@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Step 1 – Local WebRTC</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 16px; background: #f4f4f5; color: #18181b; }
+    h1 { margin: 0 0 4px; font-size: 20px; }
+    p.sub { margin: 0 0 12px; color: #52525b; }
+    .peers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .peer { background: #fff; border-radius: 8px; padding: 8px; }
+    .peer h2 { margin: 0 0 6px; font-size: 15px; }
+    .peer.A h2 { color: #2563eb; }
+    .peer.B h2 { color: #c2410c; }
+    .vids { display: flex; gap: 6px; }
+    .vids figure { margin: 0; flex: 1; }
+    .vids figcaption { font-size: 12px; color: #71717a; }
+    video { width: 100%; aspect-ratio: 4/3; background: #000; border-radius: 4px; }
+    .controls { margin: 12px 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    button { padding: 6px 10px; border: 1px solid #a1a1aa; border-radius: 6px; background: #fff; cursor: pointer; }
+    button:disabled { opacity: .4; cursor: default; }
+    button.next { border-color: #16a34a; background: #dcfce7; font-weight: 600; }
+    #log { background: #18181b; color: #d4d4d8; font: 12px/1.45 ui-monospace, monospace;
+           height: 380px; overflow: auto; padding: 8px; border-radius: 8px; white-space: pre-wrap; }
+    .line.A   { color: #93c5fd; }
+    .line.B   { color: #fdba74; }
+    .line.SIG { color: #c4b5fd; }
+    .line.SYS { color: #a1a1aa; }
+    .line.ok  { color: #86efac; font-weight: bold; }
+    .line.err { color: #fca5a5; font-weight: bold; }
+    .line.sdp { color: #71717a; }
+  </style>
+</head>
+<body>
+  <h1>Step 1: Two peers, one page, no server</h1>
+  <p class="sub">Peer A (caller) and Peer B (callee) live in this same tab. A plain JS function stands in for the signaling server.</p>
+
+  <div class="peers">
+    <div class="peer A">
+      <h2>Peer A — caller</h2>
+      <div class="vids">
+        <figure><video id="localA" autoplay playsinline muted></video><figcaption>A's own camera (local)</figcaption></figure>
+        <figure><video id="remoteA" autoplay playsinline muted controls></video><figcaption>What A receives from B</figcaption></figure>
+      </div>
+    </div>
+    <div class="peer B">
+      <h2>Peer B — callee</h2>
+      <div class="vids">
+        <figure><video id="localB" autoplay playsinline muted></video><figcaption>B's own camera (local)</figcaption></figure>
+        <figure><video id="remoteB" autoplay playsinline muted controls></video><figcaption>What B receives from A</figcaption></figure>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <label><input type="checkbox" id="fakeMedia" checked> Fake media (no camera/mic needed)</label>
+  </div>
+  <div class="controls" id="steps">
+    <button data-step="0">1. Get media</button>
+    <button data-step="1">2. Create peer connections</button>
+    <button data-step="2">3. A: create &amp; send offer</button>
+    <button data-step="3">4. B: apply offer</button>
+    <button data-step="4">5. B: create &amp; send answer</button>
+    <button data-step="5">6. A: apply answer</button>
+    <button id="autoRun">▶ Auto-run all steps</button>
+  </div>
+  <div class="controls">
+    <button id="hangup" disabled>📴 Hang up (tell B via signaling)</button>
+    <button id="hangupSilent" disabled>💥 Hang up silently (just close A)</button>
+    <button id="reset">↺ Reset</button>
+  </div>
+
+  <div id="log"></div>
+
+  <script src="main.js"></script>
+</body>
+</html>
