@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module external.system.id="pyproject.toml" type="PYTHON_MODULE" version="4">
   <component name="NewModuleRootManager">
-    <content url="file://$MODULE_DIR$">
-      <excludeFolder url="file://$MODULE_DIR$/.venv" />
+    <content url="file://$MODULE_DIR$/user_connections">
+      <excludeFolder url="file://$MODULE_DIR$/user_connections/.venv" />
     </content>
-    <orderEntry type="jdk" jdkName="~/Learning/learn_webrtc/.venv" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="~/Learning/learn_webrtc/user_connections/.venv" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>

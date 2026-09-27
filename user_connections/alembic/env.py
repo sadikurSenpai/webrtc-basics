@@ -1,0 +1,53 @@
+"""Alembic environment.
+
+* DATABASE_URL is read from alembic/.env
+* Table definitions come from backend/app/models.py, so
+  `alembic revision --autogenerate` can diff them against the real DB.
+"""
+
+import os
+import sys
+from logging.config import fileConfig
+from pathlib import Path
+
+from dotenv import load_dotenv
+from sqlalchemy import create_engine, pool
+
+from alembic import context
+
+HERE = Path(__file__).resolve().parent
+load_dotenv(HERE / ".env")
+DATABASE_URL = os.environ["DATABASE_URL"]
+
+# Importing the backend's models also loads backend/.env (for app.config).
+# That's harmless: the backend's engine is lazy and never connects here.
+sys.path.insert(0, str(HERE.parent / "backend"))
+from app.db import Base  # noqa: E402
+from app import models  # noqa: E402,F401  (registers tables on Base.metadata)
+
+config = context.config
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
+
+target_metadata = Base.metadata
+
+
+def run_migrations_offline() -> None:
+    """`alembic upgrade head --sql`: print SQL instead of running it."""
+    context.configure(url=DATABASE_URL, target_metadata=target_metadata, literal_binds=True)
+    with context.begin_transaction():
+        context.run_migrations()
+
+
+def run_migrations_online() -> None:
+    engine = create_engine(DATABASE_URL, poolclass=pool.NullPool)
+    with engine.connect() as connection:
+        context.configure(connection=connection, target_metadata=target_metadata)
+        with context.begin_transaction():
+            context.run_migrations()
+
+
+if context.is_offline_mode():
+    run_migrations_offline()
+else:
+    run_migrations_online()

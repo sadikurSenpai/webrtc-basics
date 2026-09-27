@@ -1,0 +1,17 @@
+# Optional: run several tunnels at once (only if you need backend/signal server public too).
+# Your main ngrok config (with the authtoken) stays where `ngrok config add-authtoken` put it.
+#
+#   ngrok start --all --config ~/.config/ngrok/ngrok.yml --config ngrok.example.yml
+#
+# Whether several simultaneous tunnels are allowed depends on your ngrok plan.
+version: 3
+tunnels:
+  frontend:
+    proto: http
+    addr: 5173
+  backend:
+    proto: http
+    addr: 8000
+  signal:
+    proto: http
+    addr: 8001
