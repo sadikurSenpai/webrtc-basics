@@ -7,7 +7,9 @@ import { Signaling } from './signaling.js';
 import { CallManager } from './call.js';
 import { log, mountTimelineControls, phase } from './timeline.js';
 import { describePath } from './stats.js';
+import { renderRecordingsPage } from './recordings.js';
 
+const onRecordingsPage = location.pathname.startsWith('/recordings');
 const state = { me: null, friends: [], requests: [], history: [], signalStatus: 'offline' };
 let signaling = null;
 let calls = null;
@@ -23,12 +25,18 @@ async function boot() {
   if (session.token) {
     try {
       state.me = await api('/auth/me', { quiet: true });
-      return startApp(false);
+      return enter(false);
     } catch {
       session.token = null;
     }
   }
   renderLogin();
+}
+
+// Same login for both pages; /recordings shows the admin page instead of the call app.
+function enter(created) {
+  if (onRecordingsPage) return renderRecordingsPage({ me: state.me, onLogout: logout });
+  startApp(created);
 }
 
 // ================================================================== login
@@ -38,7 +46,7 @@ function renderLogin(error) {
     h('div', { id: 'toasts' }),
     h('main', { class: 'login' },
       h('form', { class: 'card', onsubmit: onLogin },
-        h('h1', {}, '📞 WebRTC 1-to-1 calls'),
+        h('h1', {}, onRecordingsPage ? '🎞 Call recordings (admin)' : '📞 WebRTC 1-to-1 calls'),
         h('p', { class: 'muted' },
           'No sign-up needed: a new username is created with the password you type. ' +
           'Next time, log in with the same password.'),
@@ -48,7 +56,8 @@ function renderLogin(error) {
         h('label', {}, 'Password',
           h('input', { name: 'password', type: 'password', required: true, minlength: 4, autocomplete: 'current-password' })),
         error && h('p', { class: 'error' }, error),
-        h('button', { type: 'submit', class: 'primary' }, 'Log in'))));
+        h('button', { type: 'submit', class: 'primary' }, 'Log in'),
+        h('p', { class: 'muted small' }, 'Note: calls in this demo app are recorded.'))));
 }
 
 async function onLogin(event) {
@@ -58,7 +67,7 @@ async function onLogin(event) {
     const res = await api('/auth/login', { method: 'POST', body: { username: form.get('username'), password: form.get('password') } });
     session.token = res.access_token;
     state.me = res.user;
-    startApp(res.created);
+    enter(res.created);
   } catch (e) {
     renderLogin(e.message);
   }

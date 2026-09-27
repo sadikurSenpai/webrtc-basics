@@ -10,9 +10,9 @@ from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import auth, calls, friends, internal
+from app.routers import admin, auth, calls, friends, internal, recordings
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s | %(message)s", datefmt="%H:%M:%S")
 
 app = FastAPI(title="user_connections backend")
 
@@ -29,6 +29,8 @@ api = APIRouter(prefix="/api")
 api.include_router(auth.router)
 api.include_router(friends.router)
 api.include_router(calls.router)
+api.include_router(recordings.router)
+api.include_router(admin.router)
 app.include_router(api)
 
 # Server-to-server only.

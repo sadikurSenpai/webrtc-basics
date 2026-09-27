@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 
 from app.deps import DB, CurrentUser
 from app.models import User
-from app.schemas import LoginIn, LoginOut, UserOut
+from app.schemas import LoginIn, LoginOut, MeOut
 from app.security import create_access_token, hash_password, verify_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -28,11 +28,11 @@ def login(body: LoginIn, db: DB) -> LoginOut:
     db.commit()
     return LoginOut(
         access_token=create_access_token(user.id, user.username),
-        user=UserOut.model_validate(user),
+        user=MeOut.model_validate(user),
         created=created,
     )
 
 
-@router.get("/me", response_model=UserOut)
+@router.get("/me", response_model=MeOut)
 def me(user: CurrentUser) -> User:
     return user

@@ -15,9 +15,13 @@ class UserOut(BaseModel):
     username: str
 
 
+class MeOut(UserOut):
+    is_admin: bool
+
+
 class LoginOut(BaseModel):
     access_token: str
-    user: UserOut
+    user: MeOut
     created: bool  # True = this login created the account
 
 
@@ -70,3 +74,52 @@ class InternalCallCreate(BaseModel):
 class InternalCallUpdate(BaseModel):
     status: str
     end_reason: str | None = None
+
+
+# ---- recordings ----
+
+
+class RecordingStartIn(BaseModel):
+    call_id: uuid.UUID
+    mime_type: str = Field(max_length=64)
+
+
+class UploadUrl(BaseModel):
+    index: int
+    url: str
+
+
+class RecordingStartOut(BaseModel):
+    recording_id: uuid.UUID
+    upload_urls: list[UploadUrl]
+
+
+class RecordingCompleteIn(BaseModel):
+    chunk_count: int = Field(ge=0)
+    size_bytes: int = Field(ge=0)
+    duration_seconds: float = Field(ge=0)
+
+
+class AdminCallRow(BaseModel):
+    call_id: uuid.UUID
+    caller: UserOut
+    callee: UserOut
+    media: str
+    call_status: str
+    created_at: datetime
+    answered_at: datetime | None
+    ended_at: datetime | None
+    sides: list[dict]  # [{username, status, chunk_count, size_bytes}]
+
+
+class AdminRecordingOut(BaseModel):
+    recording_id: uuid.UUID
+    user: UserOut
+    role: str  # "caller" | "callee"
+    status: str
+    mime_type: str
+    chunk_count: int
+    size_bytes: int
+    duration_seconds: float | None
+    started_at: datetime
+    chunk_urls: list[str]

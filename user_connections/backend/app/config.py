@@ -31,6 +31,18 @@ class Settings(BaseSettings):
     # also generate short-lived TURN credentials per user here.
     ice_servers_json: str = '[{"urls": "stun:stun.l.google.com:19302"}]'
 
+    # Call recordings: devices upload chunks straight to S3 with presigned URLs,
+    # so the backend only signs URLs and stores metadata (never the bytes).
+    s3_endpoint: str
+    s3_region: str
+    s3_bucket: str
+    s3_access_key_id: str
+    s3_secret_access_key: str
+    s3_recordings_prefix: str = "learn_webrtc/recordings"
+    recording_url_batch: int = 60
+    presigned_url_expire_seconds: int = 3600
+    recording_cors_origins: str = "http://localhost:5173"
+
     @cached_property
     def ice_servers(self) -> list[dict]:
         return json.loads(self.ice_servers_json)

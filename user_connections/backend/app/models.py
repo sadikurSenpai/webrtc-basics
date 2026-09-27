@@ -4,7 +4,19 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, String, UniqueConstraint, func
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -16,6 +28,8 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(String(32), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
+    # Admins can open /recordings. Set with: uv run python -m app.cli make-admin <username>
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
@@ -85,3 +99,39 @@ class Call(Base):
 
     caller: Mapped[User] = relationship(foreign_keys=[caller_id])
     callee: Mapped[User] = relationship(foreign_keys=[callee_id])
+
+
+class RecordingStatus(str, enum.Enum):
+    recording = "recording"  # device is uploading chunks
+    complete = "complete"  # device called /complete and every chunk is in S3
+    partial = "partial"  # device never finished (crash, closed tab); some chunks exist
+    failed = "failed"  # no chunks at all
+
+
+class CallRecording(Base):
+    """One per participant per call: that person's video + BOTH voices mixed.
+
+    Chunks live in S3 under s3_prefix (00000.webm, 00001.webm, ...). There is no
+    row per chunk: chunk_count is enough to rebuild every key.
+    """
+
+    __tablename__ = "call_recordings"
+    __table_args__ = (UniqueConstraint("call_id", "user_id", name="uq_call_recordings_call_user"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    call_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("calls.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    s3_prefix: Mapped[str] = mapped_column(String(512))
+    file_ext: Mapped[str] = mapped_column(String(8))
+    mime_type: Mapped[str] = mapped_column(String(64))
+    status: Mapped[RecordingStatus] = mapped_column(
+        Enum(RecordingStatus, name="recording_status"), default=RecordingStatus.recording
+    )
+    chunk_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    size_bytes: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
+    duration_seconds: Mapped[float | None] = mapped_column(Float)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    call: Mapped[Call] = relationship()
+    user: Mapped[User] = relationship()

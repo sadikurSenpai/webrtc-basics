@@ -171,3 +171,38 @@ The live stats box shows which path was chosen (`host`, `srflx` or `relay`).
 
 Note: anyone with the link can create an account (by design: login = sign-up). Stop ngrok
 when you're done sharing.
+
+---
+
+## Call recordings (admin)
+
+Each side records **its own camera (downscaled to 320×240 @ 15 fps) + both voices mixed**, in
+10-second chunks uploaded **straight to S3** with presigned URLs. The backend only signs URLs and
+stores metadata; the signal server is unchanged.
+
+```
+device ── POST /api/recordings ──────────► backend: row in call_recordings + 60 presigned PUT URLs
+device ── PUT chunk every 10 s ──────────► S3: <S3_RECORDINGS_PREFIX>/<call_id>/<user_id>/00000.webm …
+device ── POST /api/recordings/{id}/complete ► backend checks S3 (one LIST) → complete | partial | failed
+```
+
+* S3 settings: `S3_*` and `RECORDING_*` in `backend/.env`.
+* A device that crashes never calls `/complete`; when an admin opens that call, the backend
+  counts the chunks in S3 and marks it `partial` (no background worker needed).
+* Watch it in the **backend terminal**: `🎙 recording started`, `🔗 issued 60 upload URLs`,
+  `✅ recording complete … N/N chunks, X MB, m:ss`.
+* Users see nothing during calls; the login page carries a one-line "calls are recorded" notice.
+
+### Watching recordings
+
+```bash
+cd user_connections/backend
+uv run python -m app.cli make-admin <username>   # the user must have logged in once
+uv run python -m app.cli list-admins
+uv run python -m app.cli remove-admin <username>
+```
+
+Then open **`/recordings`** (e.g. `http://localhost:5173/recordings` or
+`https://<your-ngrok>.ngrok-free.app/recordings`) and log in as that user. Non-admins get
+"Admins only". One row per call; click it to see both sides next to each other.
+"Play both from start" lines them up; audio plays from one file (each file already has both voices).
