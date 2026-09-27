@@ -305,7 +305,8 @@ async function logSelectedPath(name) {
   if (!pair) return log(name, 'could not find the selected candidate pair');
   const l = stats.get(pair.localCandidateId);
   const r = stats.get(pair.remoteCandidateId);
-  const addr = (c) => `${c.address ?? c.ip}:${c.port}`;
+  // Chrome hides local IPs in stats for privacy, so address may be empty.
+  const addr = (c) => `${c.address || c.ip || "(ip hidden)"}:${c.port}`;
   log(name, `🔗 chosen path: ${addr(l)} (${l.candidateType}) ⇄ ${addr(r)} (${r.candidateType}) over ${l.protocol}`, 'ok');
 }
 

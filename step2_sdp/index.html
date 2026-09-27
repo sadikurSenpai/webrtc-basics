@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Step 2 – Reading SDP &amp; ICE</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 16px; background: #f4f4f5; color: #18181b; }
+    h1 { margin: 0 0 4px; font-size: 20px; }
+    h2 { font-size: 16px; margin: 20px 0 6px; }
+    p.sub { margin: 0 0 12px; color: #52525b; }
+    .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 8px; }
+    button { padding: 6px 12px; border: 1px solid #16a34a; border-radius: 6px; background: #dcfce7; font-weight: 600; cursor: pointer; }
+    #status { font-size: 13px; color: #3f3f46; background: #fff; padding: 8px; border-radius: 6px; white-space: pre-wrap; }
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 1100px) { .cols { grid-template-columns: 1fr; } }
+    .sdp { background: #fff; border-radius: 8px; padding: 8px; font-size: 12px; }
+    .sdp h3 { margin: 0 0 6px; font-size: 14px; }
+    .section { margin-bottom: 8px; border-left: 4px solid #a1a1aa; padding-left: 6px; }
+    .section.session     { border-color: #71717a; }
+    .section.audio       { border-color: #2563eb; }
+    .section.video       { border-color: #c2410c; }
+    .section.application { border-color: #7c3aed; }
+    .section-title { font-weight: 700; margin: 4px 0; }
+    .row { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 8px; padding: 1px 0; border-bottom: 1px dotted #e4e4e7; }
+    .row code { font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
+    .row .why { color: #52525b; }
+    .row.key code { font-weight: 700; color: #b91c1c; }
+    .row.cand code { color: #15803d; }
+    .row.dim { opacity: .55; }
+    table { border-collapse: collapse; background: #fff; font-size: 12px; width: 100%; }
+    th, td { border: 1px solid #e4e4e7; padding: 4px 6px; text-align: left; vertical-align: top; }
+    th { background: #f4f4f5; }
+    td.mono { font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
+    textarea { width: 100%; height: 140px; font-family: ui-monospace, monospace; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>Step 2: Reading SDP &amp; ICE candidates</h1>
+  <p class="sub">Negotiates a call between two local peers (no camera needed), waits for ICE gathering, then explains every line.
+    <b style="color:#b91c1c">Bold red</b> = the lines you most need to understand.</p>
+
+  <div class="controls">
+    <label><input type="checkbox" id="optAudio" checked> audio</label>
+    <label><input type="checkbox" id="optVideo" checked> video</label>
+    <label><input type="checkbox" id="optData"> data channel</label>
+    <label title="Sends a request to Google's public STUN server to learn your public IP">
+      <input type="checkbox" id="optStun"> use STUN (stun.l.google.com)</label>
+    <label><input type="checkbox" id="optDim" checked> dim the less important lines</label>
+    <button id="run">Generate offer + answer</button>
+  </div>
+  <div id="status">Click "Generate offer + answer".</div>
+
+  <h2>Offer vs answer at a glance</h2>
+  <div id="summary"></div>
+
+  <h2>The SDP, line by line</h2>
+  <div class="cols">
+    <div class="sdp"><h3>OFFER (from A, the caller)</h3><div id="offer"></div></div>
+    <div class="sdp"><h3>ANSWER (from B, the callee)</h3><div id="answer"></div></div>
+  </div>
+
+  <h2>ICE candidates, field by field</h2>
+  <div id="candidates"></div>
+
+  <h2>Paste any SDP to explain it</h2>
+  <p class="sub">For example, the SDP from Step 1's console, or one logged by your mobile app later.</p>
+  <textarea id="paste" placeholder="v=0&#10;o=- ...."></textarea>
+  <div class="controls"><button id="explainPaste">Explain</button></div>
+  <div class="sdp"><div id="pasted"></div></div>
+
+  <script src="main.js"></script>
+</body>
+</html>
