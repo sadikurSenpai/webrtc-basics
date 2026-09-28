@@ -47,6 +47,12 @@ const CONNECTION_WHY = {
   failed: 'ICE could not find ANY working path. Typical when both sides are behind strict NATs/firewalls: a TURN server is needed (Step 5).',
 };
 
+// ?relay=1 in the URL forces every call through TURN (to test the relay path).
+const FORCE_RELAY = new URLSearchParams(location.search).get('relay') === '1';
+
+// Timeline copy of the ICE servers with the TURN username/credential hidden.
+const masked = (servers) => servers.map((s) => (s.credential ? { ...s, username: '<hidden>', credential: '<hidden>' } : s));
+
 function parseCandidate(c) {
   const f = (c || '').split(' ');
   return { protocol: f[2], address: f[4], port: f[5], type: c?.match(/ typ (\w+)/)?.[1] };
@@ -73,9 +79,10 @@ function summarizeSdp(sdp) {
 }
 
 export class CallManager {
-  constructor({ signaling, iceServers, onChange, onEnded, onStats }) {
+  constructor({ signaling, getConfig, onChange, onEnded, onStats }) {
     this.signaling = signaling;
-    this.iceServers = iceServers;
+    this.getConfig = getConfig; // async () => GET /api/config
+    this.iceServers = [];
     this.onChange = onChange;
     this.onEnded = onEnded;
     this.onStats = onStats;
@@ -116,6 +123,8 @@ export class CallManager {
     phase('Step 1 · Get camera/microphone');
     if (!(await this.getMedia(media))) return this.finish('Could not access camera/microphone');
     if (this.state !== 'outgoing') return; // cancelled during the permission prompt
+    await this.loadIceServers();
+    if (this.state !== 'outgoing') return;
 
     phase('Step 2 · Ring the other person through the signal server');
     this.signaling.send('call.invite', { to_user_id: friend.id, media });
@@ -141,6 +150,8 @@ export class CallManager {
       return this.finish('Could not access camera/microphone');
     }
     if (this.call !== call) return; // caller cancelled while we were waiting for permission
+    await this.loadIceServers();
+    if (this.call !== call) return;
 
     phase('Step 2 · Prepare the peer connection, then accept');
     this.createPeerConnection();
@@ -203,12 +214,36 @@ export class CallManager {
 
   // ======================================================= peer connection
 
+  // Fresh STUN/TURN settings before EVERY call: TURN credentials are short-lived.
+  async loadIceServers() {
+    try {
+      const config = await this.getConfig();
+      this.iceServers = config.ice_servers;
+      const hours = Math.round(config.turn_credential_ttl_seconds / 3600);
+      log('api', config.ice_source === 'cloudflare'
+        ? `Got Cloudflare STUN + TURN (credentials valid ${hours} h) from the backend`
+        : 'Got STUN only from the backend (TURN unavailable)', {
+        why: config.ice_source === 'cloudflare'
+          ? 'STUN finds our public address (free). TURN is the fallback relay if no direct path works (billed only when used). ' +
+            'The backend created these short-lived credentials with its Cloudflare key; the key itself never reaches the app.'
+          : 'Calls still work when a direct path exists, but users behind strict NATs/firewalls may fail to connect.',
+        detail: masked(this.iceServers),
+      });
+    } catch (e) {
+      log('error', `Could not load /api/config: ${e.message}`, { why: 'Falling back to no STUN/TURN: only same-network calls will connect.' });
+      this.iceServers = [];
+    }
+  }
+
   createPeerConnection() {
-    const pc = new RTCPeerConnection({ iceServers: this.iceServers });
+    const config = { iceServers: this.iceServers };
+    if (FORCE_RELAY) config.iceTransportPolicy = 'relay';
+    const pc = new RTCPeerConnection(config);
     this.pc = pc;
-    log('pc', `new RTCPeerConnection({ iceServers: [${this.iceServers.length} server(s)] })`, {
-      why: 'The object that does all the WebRTC work: negotiation, ICE, encryption, sending and receiving media. The STUN/TURN list came from the backend (GET /api/config).',
-      detail: this.iceServers,
+    log('pc', `new RTCPeerConnection({ iceServers: [${this.iceServers.length} server(s)]${FORCE_RELAY ? ", iceTransportPolicy: 'relay'" : ''} })`, {
+      why: 'The object that does all the WebRTC work: negotiation, ICE, encryption, sending and receiving media.' +
+        (FORCE_RELAY ? ' ?relay=1 is set: ONLY relay candidates are used, so this call must go through TURN.' : ''),
+      detail: masked(this.iceServers),
     });
 
     pc.onicecandidate = ({ candidate }) => {

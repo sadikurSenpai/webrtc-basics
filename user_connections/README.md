@@ -21,7 +21,7 @@ states, and what the **signal server** did at each step.
 
 | Directory | What it is | Port | Config |
 |---|---|---|---|
-| `backend/` | Accounts, friends, call history, STUN/TURN config | 8000 | `backend/.env` |
+| `backend/` | Accounts, friends, call history, Cloudflare STUN/TURN credentials, recordings | 8000 | `backend/.env` |
 | `signal_server/` | WebSocket: presence, call state machine, relays SDP/ICE | 8001 | `signal_server/.env` |
 | `frontend/` | Vite app; **proxies** `/api` → backend and `/ws` → signal server | 5173 | `frontend/.env` |
 | `alembic/` | Database migrations | – | `alembic/.env` |
@@ -88,7 +88,24 @@ Later, after changing `backend/app/models.py`:
 `JWT_SECRET` and `INTERNAL_API_KEY` are already generated and must be **identical** in
 `backend/.env` and `signal_server/.env`.
 
-## 2. Run (three terminals)
+## 2a. Run everything with Docker (one command)
+
+```bash
+cd user_connections
+cp .env.example .env            # once: put your NGROK_AUTHTOKEN in it
+docker compose up --build       # backend + signal server + frontend + ngrok
+```
+
+* The public URL: `docker compose logs ngrok | grep url=` or open http://localhost:4040
+* Logs per service: `docker compose logs -f backend` (TURN, recordings), `… signal` (calls)
+* Stop: `docker compose down`
+* Uses the same `backend/.env`, `signal_server/.env`, `frontend/.env` as running by hand.
+  No `.env` is copied into the images (`.dockerignore`); they're passed at runtime.
+* Linux host networking: containers reach your local PostgreSQL on `localhost:5432`.
+  Stop any manually started servers or host `ngrok` first (ports 8000/8001/5173/4040).
+* The backend applies Alembic migrations on start.
+
+## 2b. Run by hand (three terminals)
 
 ```bash
 # Terminal 1: backend
@@ -164,8 +181,8 @@ and add the frontend's public origin to `CORS_ORIGINS` in `backend/.env`.
 | Situation | Result |
 |---|---|
 | Same office/home network | Usually yes (`host` candidates) |
-| Different networks, normal home routers | Usually yes (`srflx` via the STUN server in `ICE_SERVERS_JSON`) |
-| Strict corporate firewall / some mobile carriers | May **fail**: `connectionState → failed` in the panel. Needs a **TURN** server (Step 5) |
+| Different networks, normal home routers | Yes (`srflx` via Cloudflare STUN) |
+| Strict corporate firewall / some mobile carriers | Yes, **relayed through Cloudflare TURN** (`relay` in the stats box) |
 
 The live stats box shows which path was chosen (`host`, `srflx` or `relay`).
 
@@ -206,3 +223,20 @@ Then open **`/recordings`** (e.g. `http://localhost:5173/recordings` or
 `https://<your-ngrok>.ngrok-free.app/recordings`) and log in as that user. Non-admins get
 "Admins only". One row per call; click it to see both sides next to each other.
 "Play both from start" lines them up; audio plays from one file (each file already has both voices).
+
+---
+
+## STUN / TURN (Cloudflare)
+
+Before every call the app calls `GET /api/config`. The backend uses
+`CLOUDFLARE_TURN_KEY_ID` + `CLOUDFLARE_TURN_API_TOKEN` (in `backend/.env`, never sent
+to apps) to get **short-lived** STUN + TURN credentials (`TURN_CREDENTIAL_TTL_SECONDS`,
+default 4 h) from Cloudflare. If Cloudflare is unreachable it falls back to STUN only
+and logs a warning.
+
+**Test the relay path:** open the app with **`?relay=1`**, e.g.
+`https://<ngrok-url>/?relay=1` in **both** tabs/phones. Every call is then forced through
+TURN, and the stats box must show `relay ⇄ relay`. Without `?relay=1`, direct paths are
+used whenever possible (TURN is only the fallback, and only relayed traffic is billed).
+
+See [CALL_PIPELINE.md](CALL_PIPELINE.md) for the full reusable design.

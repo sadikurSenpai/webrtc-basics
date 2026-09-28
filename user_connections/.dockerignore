@@ -1,0 +1,8 @@
+# Never bake secrets or local environments into images.
+**/.env
+**/.venv
+**/node_modules
+**/dist
+**/__pycache__
+**/*.pyc
+.idea

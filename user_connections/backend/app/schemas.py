@@ -54,6 +54,8 @@ class CallOut(BaseModel):
 
 class ClientConfigOut(BaseModel):
     ice_servers: list[dict]
+    ice_source: str  # "cloudflare" (STUN + TURN) | "fallback" (STUN only)
+    turn_credential_ttl_seconds: int
 
 
 # ---- internal (signal server -> backend) ----

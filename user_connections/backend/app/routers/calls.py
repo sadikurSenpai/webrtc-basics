@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from sqlalchemy import or_, select
 
+from app import turn
 from app.config import settings
 from app.deps import DB, CurrentUser
 from app.models import Call
@@ -34,6 +35,11 @@ def call_history(user: CurrentUser, db: DB) -> list[CallOut]:
 
 
 @router.get("/config", response_model=ClientConfigOut)
-def client_config(_: CurrentUser) -> ClientConfigOut:
-    """What the app needs before calling: which STUN/TURN servers to use."""
-    return ClientConfigOut(ice_servers=settings.ice_servers)
+def client_config(user: CurrentUser) -> ClientConfigOut:
+    """What the app needs before EVERY call: STUN + short-lived TURN credentials."""
+    servers, source = turn.ice_servers_for(user.id)
+    return ClientConfigOut(
+        ice_servers=servers,
+        ice_source=source,
+        turn_credential_ttl_seconds=settings.turn_credential_ttl_seconds,
+    )

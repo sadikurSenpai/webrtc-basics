@@ -27,9 +27,13 @@ class Settings(BaseSettings):
     # Only needed if the browser calls the backend directly (not through the Vite proxy).
     cors_origins: str = "http://localhost:5173"
 
-    # STUN/TURN servers handed to clients. In production the backend would
-    # also generate short-lived TURN credentials per user here.
-    ice_servers_json: str = '[{"urls": "stun:stun.l.google.com:19302"}]'
+    # STUN/TURN via Cloudflare Realtime. The backend turns the key + API token
+    # into short-lived per-user credentials (app/turn.py); clients never see them.
+    cloudflare_turn_key_id: str = ""
+    cloudflare_turn_api_token: str = ""
+    turn_credential_ttl_seconds: int = 14400
+    # Fallback when Cloudflare is unreachable or not configured: STUN only.
+    ice_servers_json: str = '[{"urls": "stun:stun.cloudflare.com:3478"}]'
 
     # Call recordings: devices upload chunks straight to S3 with presigned URLs,
     # so the backend only signs URLs and stores metadata (never the bytes).

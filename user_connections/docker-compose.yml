@@ -1,0 +1,52 @@
+# Everything in one command (from user_connections/):
+#
+#   docker compose up --build        # backend + signal server + frontend + ngrok
+#   docker compose logs -f backend   # watch one service (recordings, TURN, ...)
+#   docker compose down
+#
+# Configuration stays in the same .env files as when running by hand:
+#   backend/.env, signal_server/.env, frontend/.env, and ./.env (NGROK_AUTHTOKEN).
+#
+# network_mode: host (Linux) — every container shares your machine's network, so
+# "localhost" means the same thing inside and outside Docker: the backend reaches
+# your local PostgreSQL at localhost:5432 and the services reach each other on
+# localhost:8000 / 8001 / 5173 exactly like before. Stop any copies you started by
+# hand first (the ports would clash).
+
+services:
+  backend:
+    build: { context: ., target: backend }
+    network_mode: host
+    env_file: backend/.env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  signal:
+    build: { context: ., target: signal }
+    network_mode: host
+    env_file: signal_server/.env
+    restart: unless-stopped
+    depends_on:
+      backend: { condition: service_healthy }
+
+  frontend:
+    build: { context: ., target: frontend }
+    network_mode: host
+    env_file: frontend/.env
+    restart: unless-stopped
+    depends_on: [backend, signal]
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    network_mode: host
+    # Public https URL → local frontend (5173). The URL is printed in
+    # `docker compose logs ngrok` and shown at http://localhost:4040.
+    command: ["http", "5173", "--log", "stdout"]
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN:?Set NGROK_AUTHTOKEN in user_connections/.env}
+    restart: unless-stopped
+    depends_on: [frontend]

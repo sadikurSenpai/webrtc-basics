@@ -90,17 +90,6 @@ async function startApp(created) {
     why: 'The backend returned a JWT (signed token). We send it on every REST call, and ONCE to the signal server to prove who we are.',
   });
 
-  let iceServers = [];
-  try {
-    iceServers = (await api('/config')).ice_servers;
-    log('api', `Got ${iceServers.length} ICE server(s) from the backend`, {
-      why: 'STUN tells us our public address; TURN would relay media when a direct path is impossible. The backend decides which ones apps use.',
-      detail: iceServers,
-    });
-  } catch (e) {
-    log('error', `Could not load /api/config: ${e.message}`);
-  }
-
   signaling = new Signaling({
     token: session.token,
     onMessage: (msg) => onSignal(msg).catch((e) => log('error', `${msg.type} handler failed: ${e.message}`)),
@@ -113,7 +102,7 @@ async function startApp(created) {
   });
   calls = new CallManager({
     signaling,
-    iceServers,
+    getConfig: () => api('/config', { quiet: true }),
     onChange: renderStage,
     onStats: renderStats,
     onEnded: (text) => {

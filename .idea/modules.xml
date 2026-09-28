@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/learn-webrtc.iml" filepath="$PROJECT_DIR$/.idea/learn-webrtc.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/learn-webrtc@1.iml" filepath="$PROJECT_DIR$/.idea/learn-webrtc@1.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/user-connections.iml" filepath="$PROJECT_DIR$/.idea/user-connections.iml" />
     </modules>
   </component>

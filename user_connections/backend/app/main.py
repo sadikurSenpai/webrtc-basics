@@ -13,6 +13,8 @@ from app.config import settings
 from app.routers import admin, auth, calls, friends, internal, recordings
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s | %(message)s", datefmt="%H:%M:%S")
+# httpx logs full request URLs (e.g. the Cloudflare TURN key id): keep it quiet.
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 app = FastAPI(title="user_connections backend")
 
